@@ -1,0 +1,249 @@
+# installing/loading required packages
+install.packages("rgdal")
+install.packages("ggplot2")
+install.packages("rgbif")
+install.packages("dplyr")
+install.packages("RColorBrewer")
+install.packages("gridExtra")
+install.oackages("raster")
+install.packages("plot3D")
+install.packages("rgl")
+install.packages("rasterVis")
+
+#loading libraries
+library(rgdal)
+library(ggplot2)
+library(rgbif)
+library(dplyr)
+library(RColorBrewer)
+library(gridExtra)
+library(raster)
+library(plot3D)
+library(rgl)
+library(rasterVis)
+
+# pulling in shape file (wards)  
+ogrDrivers()
+ogrInfo(dsn = "E:/Documents/Random/Wards", layer = "Wards2011")
+data.shape <- readOGR(dsn = "E:/Documents/Random/Wards", layer = "Wards2011")
+class(data.shape)
+
+# plotting (basic map of SA)
+ggplot(data = data.shape, aes(x = long, y = lat, group = group)) + geom_path()
+
+# reading in ward data (population and income/poverty)
+wards <- read.csv("E:/Documents/Random/Data for G/ward.csv", stringsAsFactors = F)
+ward_pop <- read.csv("E:/Documents/Random/Data for G/population_ward.csv", stringsAsFactors = F, sep = ";")
+ward_poverty <- read.csv("E:/Documents/Random/Data for G/poverty_wards_50.csv", stringsAsFactors = F, sep = ";")
+
+names(wards) <- c("ward_code", names(wards)[-1])
+names(ward_pop) <- c("ward_code", "population")
+names(ward_poverty) <- c("ward_code", "poverty")
+ward_poverty$poverty <- as.numeric(ward_poverty$poverty) 
+ward_poverty$poverty <- factor(ward_poverty$poverty, levels = c("0", "1"), labels = c("Middle to High Income", "Substantial Poverty"))
+
+# file mergers
+ward_pop  <- merge(wards[, c(1, 3, 5)], ward_pop, by = 'ward_code')
+ward_full <- merge(ward_pop, ward_poverty, by = "ward_code")
+
+# creating subsets of shape file
+gauteng_shape <- data.shape[data.shape$PROVINCE == "Gauteng", ] 
+wc_shape <- data.shape[data.shape$PROVINCE == "Western Cape", ]  
+wc_urban <- wc_shape[wc_shape$CAT_B == "CPT" | wc_shape$CAT_B == "WC023" | wc_shape$CAT_B == "WC024", ] 
+
+# creating normal data frames for merger with ward specific information
+names(gauteng_shape)
+gauteng_df = gauteng_shape %>% fortify(region = 'WARD_ID')
+names(gauteng_df) <- c(names(gauteng_df)[-7], "ward_code")
+
+wc_df = wc_shape %>% fortify(region = 'WARD_ID')
+names(wc_df) <- c(names(wc_df)[-7], "ward_code")
+
+wc_urban_df = wc_urban %>% fortify(region = 'WARD_ID')
+names(wc_urban_df) <- c(names(wc_urban_df)[-7], "ward_code")
+
+# plotting using ggplot and geom_path()
+gauteng_map <- ggplot() +
+  geom_path(data = gauteng_df, 
+            aes(x = long, y = lat, group = group),
+            color = 'gray', fill = 'white', size = .2) +
+            ggtitle("Gauteng Wards") +
+            ylab("Latitude") +
+            xlab("Longitude") +
+            theme(plot.title = element_text(face = "bold"))
+
+print(gauteng_map) 
+
+wc_map <- ggplot() +
+  geom_path(data = wc_df, 
+            aes(x = long, y = lat, group = group),
+            color = 'gray', fill = 'white', size = .2) +
+  ggtitle("Western Cape Wards") +
+  ylab("Latitude") +
+  xlab("Longitude") +
+  theme(plot.title = element_text(face = "bold"))
+
+print(wc_map)  
+
+wc_urban_map <- ggplot() +
+  geom_path(data = wc_urban_df, 
+            aes(x = long, y = lat, group = group),
+            color = 'gray', fill = 'white', size = .2) +
+  ggtitle("Western Cape Wards") +
+  ylab("Latitude") +
+  xlab("Longitude") +
+  theme(plot.title = element_text(face = "bold"))
+
+print(wc_urban_map)
+
+# merging shape and ward data into normal data frame
+# gauteng
+gauteng_ward <- ward_full[ward_full$province_code == "GT", ]
+wc_ward <- ward_full[ward_full$province_code == "WC", ]
+wc_urban_ward <- wc_ward[wc_ward$municipality_code == "CPT" | wc_ward$municipality_code == "WC023" | wc_ward$municipality_code == "WC024", ]
+
+data_for_map_gauteng <- merge(gauteng_df, gauteng_ward, by = "ward_code")
+data_for_map_wc <- merge(wc_df, wc_ward, by = "ward_code")
+data_for_map_wcurban <- merge(wc_urban_df, wc_urban_ward, by = "ward_code")
+
+# plotting, colours by population value
+# code adapted from:
+# http://stackoverflow.com/questions/21065480/z-values-for-polygon-shapefile-in-r
+
+gauteng_pop_plot <- ggplot(data_for_map_gauteng, aes(long, lat, group = group)) + 
+  geom_polygon(aes(fill = population)) +
+  geom_path(colour = "grey") +
+  scale_fill_gradientn(name = "Population (Nominal)", 
+                       colours = rev(brewer.pal(11, "RdYlBu"))) +
+  labs(title = "Gauteng Wards", x = "Longitude", y = "Latitude")+
+  coord_fixed() +
+  theme(plot.title = element_text(face = "bold"))
+
+wc_pop_plot <- ggplot(data_for_map_wc, aes(long, lat, group = group)) + 
+  geom_polygon(aes(fill = population)) +
+  geom_path(colour = "grey") +
+  scale_fill_gradientn(name = "Population (Nominal)", 
+                       colours = rev(brewer.pal(11, "RdYlBu"))) +
+  labs(title = "Western Cape Wards", x = "Longitude", y = "Latitude")+
+  coord_fixed() +
+  theme(plot.title = element_text(face = "bold"))
+
+wcurb_pop_plot <- ggplot(data_for_map_wcurban, aes(long, lat, group = group)) + 
+  geom_polygon(aes(fill = population)) +
+  geom_path(colour = "grey") +
+  scale_fill_gradientn(name = "Population (Nominal)", 
+                       colours = rev(brewer.pal(11, "RdYlBu"))) +
+  labs(title = "Western Cape Wards", x = "Longitude", y = "Latitude")+
+  coord_fixed() +
+  theme(plot.title = element_text(face = "bold"))
+
+print(gauteng_pop_plot)
+print(wc_pop_plot)
+print(wcurb_pop_plot)
+
+brewer.pal(11, "RdYlBu")
+
+gauteng_poverty_plot <- ggplot(data_for_map_gauteng, aes(long, lat, group = group)) + 
+  geom_polygon(aes(fill = factor(poverty))) +
+  geom_path(colour = "grey") +
+  scale_fill_manual(name = "Poverty", 
+                       values = c("#313695", "#A50026")) +
+  labs(title = "Gauteng Wards", x = "Longitude", y = "Latitude")+
+  coord_fixed() +
+  theme(plot.title = element_text(face = "bold")) 
+
+wc_poverty_plot <- ggplot(data_for_map_wc, aes(long, lat, group = group)) + 
+  geom_polygon(aes(fill = factor(poverty))) +
+  geom_path(colour = "grey") +
+  scale_fill_manual(name = "Poverty", 
+                    values = c("#313695", "#A50026")) +
+  labs(title = "Western Cape Wards", x = "Longitude", y = "Latitude")+
+  coord_fixed() +
+  theme(plot.title = element_text(face = "bold"))
+
+wcurb_poverty_plot <- ggplot(data_for_map_wcurban, aes(long, lat, group = group)) + 
+  geom_polygon(aes(fill = factor(poverty))) +
+  geom_path(colour = "grey") +
+  scale_fill_manual(name = "Poverty", 
+                    values = c("#313695", "#A50026")) +
+  labs(title = "Western Cape Wards", x = "Longitude", y = "Latitude")+
+  coord_fixed() +
+  theme(plot.title = element_text(face = "bold"))
+
+print(gauteng_poverty_plot)
+print(wc_poverty_plot)
+print(wcurb_poverty_plot)
+
+# side by side arrangement for each province of pop and income 
+grid.newpage()
+grid.draw(cbind(ggplotGrob(gauteng_pop_plot + ggtitle("")), 
+                ggplotGrob(gauteng_poverty_plot + ggtitle("")), 
+                size="last"))
+grid.text("Gauteng Wards", x = 0.5, y = unit(20, "lines"), gp = gpar(font = 2))
+
+grid.newpage()
+grid.draw(cbind(ggplotGrob(wc_pop_plot + ggtitle("")), 
+                ggplotGrob(wc_poverty_plot + ggtitle("")), 
+                size="last"))
+grid.text("Western Cape Wards", x = 0.5, y = unit(20, "lines"), gp = gpar(font = 2))
+
+grid.newpage()
+grid.draw(cbind(ggplotGrob(wcurb_pop_plot + ggtitle("")), 
+                ggplotGrob(wcurb_poverty_plot + ggtitle("")), 
+                size="last"))
+grid.text("Western Cape Wards", x = 0.5, y = unit(20, "lines"), gp = gpar(font = 2))
+
+grid.newpage()
+grid.draw(cbind(ggplotGrob(gauteng_poverty_plot + ggtitle("")), 
+                ggplotGrob(wcurb_poverty_plot + ggtitle("")), 
+                size="last"))
+grid.text("Gauteng/Western Cape Wards", x = 0.5, y = unit(20, "lines"), gp = gpar(font = 2))
+
+# trying 3D: rasterize the polygons etc
+# adding ward information to shape files now (instead of vv as previously)
+
+gauteng_shape@data = data.frame(gauteng_shape@data, gauteng_ward[match(gauteng_shape@data$WARD_ID, gauteng_ward$ward_code),])
+wc_shape@data = data.frame(wc_shape@data, wc_ward[match(wc_shape@data$WARD_ID, wc_ward$ward_code),])
+wc_urban@data = data.frame(wc_urban@data, wc_urban_ward[match(wc_urban@data$WARD_ID, wc_urban_ward$ward_code),])
+
+gauteng_raster <- raster(nrows=100, ncols=200, extent(gauteng_shape)) 
+wc_raster <- raster(nrows=100, ncols=200, extent(wc_shape)) 
+wc_urban_raster <- raster(nrows=100, ncols=200, extent(wc_urban)) 
+
+gauteng_test <- rasterize(gauteng_shape, gauteng_raster, field="population")
+wc_test <- rasterize(wc_shape, wc_raster, field="population")
+wc_urban_test <- rasterize(wc_urban, wc_urban_raster, field="population")
+
+plot(gauteng_test) # colours by field specified above 
+plot(wc_test) # colours by field specified above 
+plot(wc_urban_test) # colours by field specified above 
+
+plot3D(gauteng_test)
+plot3D(wc_test)
+plot3D(wc_urban_test)
+
+# stacking
+
+gauteng_pop <- rasterize(gauteng_shape, gauteng_raster, field="population")
+gauteng_pov <- rasterize(gauteng_shape, gauteng_raster, field="poverty")
+
+gauteng_stack <- stack(gauteng_pop, gauteng_pov)
+
+drape_gauteng <- cut(gauteng_pov, 2)
+plot3D(gauteng_pop, drape = drape_gauteng, col = rainbow)
+
+wc_pop <- rasterize(wc_shape, wc_raster, field="population")
+wc_pov <- rasterize(wc_shape, wc_raster, field="poverty")
+
+wc_stack <- stack(wc_pop, wc_pov)
+
+drape_wc <- cut(wc_pov, 2)
+plot3D(wc_pop, drape = drape_wc, col = rainbow)
+
+wc_urban_pop <- rasterize(wc_urban, wc_urban_raster, field="population")
+wc_urban_pov <- rasterize(wc_urban, wc_urban_raster, field="poverty")
+
+wc_urban_stack <- stack(wc_urban_pop, wc_urban_pov)
+
+drape_wc_urban <- cut(wc_urban_pov, 2)
+plot3D(wc_urban_pop, drape = drape_wc_urban, col = rainbow)
