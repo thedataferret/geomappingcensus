@@ -9,7 +9,11 @@ These R scripts plot census data on a ward level. Plots include
 
 See 3d elevation examples here: 
 Gauteng Population Density http://bit.ly/1J8Zhnd 
-Western Cape Urban density and poverty http://bit.ly/1Iyt3Bh
+Western Cape (Urban Subset) density and poverty http://bit.ly/1Iyt3Bh
+
+See choropleth map examples here:
+Gauteng Population Density http://bit.ly/1IvJ4JO
+Gauteng Substantial Poverty Wards http://bit.ly/1HbtO1E
 
 For the purposes of this demonstration, wards with "Substantial Poverty" were defined as having more than 50% of households subsisting on less than R38,200 per annum. 
 
