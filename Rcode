@@ -24,17 +24,17 @@ library(rasterVis)
 
 # pulling in shape file (wards)  
 ogrDrivers()
-ogrInfo(dsn = "E:/Documents/Random/Wards", layer = "Wards2011")
-data.shape <- readOGR(dsn = "E:/Documents/Random/Wards", layer = "Wards2011")
+ogrInfo(dsn = "<folderpath>", layer = "Wards2011")
+data.shape <- readOGR(dsn = "<folderpath>", layer = "Wards2011")
 class(data.shape)
 
 # plotting (basic map of SA)
 ggplot(data = data.shape, aes(x = long, y = lat, group = group)) + geom_path()
 
 # reading in ward data (population and income/poverty)
-wards <- read.csv("E:/Documents/Random/Data for G/ward.csv", stringsAsFactors = F)
-ward_pop <- read.csv("E:/Documents/Random/Data for G/population_ward.csv", stringsAsFactors = F, sep = ";")
-ward_poverty <- read.csv("E:/Documents/Random/Data for G/poverty_wards_50.csv", stringsAsFactors = F, sep = ";")
+wards <- read.csv("<filepath>.csv", stringsAsFactors = F)
+ward_pop <- read.csv("<filepath>.csv", stringsAsFactors = F, sep = ";")
+ward_poverty <- read.csv("<filepath>.csv", stringsAsFactors = F, sep = ";")
 
 names(wards) <- c("ward_code", names(wards)[-1])
 names(ward_pop) <- c("ward_code", "population")
