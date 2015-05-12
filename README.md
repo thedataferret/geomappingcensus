@@ -12,3 +12,5 @@ For the purposes of this demonstration, wards with "Substantial Poverty" were de
 The data for this example came from the 2011 Census: http://www.statssa.gov.za/
 
 The ward / municipality / province outlines came in .shp format from http://www.demarcation.org.za/ but are much more easily accessed from https://github.com/Code4SA/SA-Maps
+
+Created for a Code4SA Hackathon :-)
